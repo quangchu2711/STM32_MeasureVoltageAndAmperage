@@ -1,34 +1,46 @@
+/******************************************************************************/
+/*                              INCLUDE FILES                                 */
+/******************************************************************************/
 #include "stm32f10x.h"
 #include "Delay.h"
 #include "Serial.h"
-
+/******************************************************************************/
+/*                     EXPORTED TYPES and DEFINITIONS                         */
+/******************************************************************************/
 #define PAGE_ADDR_127 (0x0801FC00U)
-
-void Led_Config(void);
+/******************************************************************************/
+/*                              EXPORTED DATA                                 */
+/******************************************************************************/
+uint32_t setTimeMode[4] = {3, 4, 5, 6};
+/******************************************************************************/
+/*                            EXPORTED FUNCTIONS                              */
+/******************************************************************************/
 void Flash_WriteData(uint32_t data, uint32_t addr);
+void Flash_WriteDataArray(uint32_t dataArr[], uint8_t lenArr, uint32_t startAddr);
+void Led_Config(void);
 uint32_t Flash_ReadData(uint32_t addr);
-uint32_t cnt = 0;
-uint32_t readData;
-
+/******************************************************************************/
+/*                            			MAIN                                      */
+/******************************************************************************/
 int main(void)
 {
 	SysTick_Init();
-	//Led_Config();
 	Serial_Begin(9600);
 	Led_Config();
 	GPIO_WriteBit(GPIOC, GPIO_Pin_13, (BitAction)1);
-	//Flash_WriteData(cnt, PAGE_ADDR_127);
 
   while (1)
   {
-		readData = Flash_ReadData(PAGE_ADDR_127);
-		Serial_Printf("%d\n", readData);
-		cnt++;
-		if ((cnt % 5) == 0)
-		{
-			Flash_WriteData(cnt, PAGE_ADDR_127);
-		}
-		delay_ms(1000);
+			uint8_t i;
+			uint32_t data;
+			uint32_t addrStart = PAGE_ADDR_127;
+			for (i = 0; i < 4; i++)
+			{
+				data = Flash_ReadData(addrStart);
+				Serial_Printf("[%d]\n", data);
+				delay_ms(2000);
+				addrStart += 4;
+			}
   }
 }
 
@@ -49,6 +61,20 @@ void Flash_WriteData(uint32_t data, uint32_t addr)
 	FLASH_Lock();
 }
 
+void Flash_WriteDataArray(uint32_t dataArr[], uint8_t lenArr, uint32_t startAddr)
+{
+		uint8_t i;
+	
+		FLASH_Unlock();
+		while(FLASH_ErasePage(startAddr) != FLASH_COMPLETE);
+		for (i = 0; i < lenArr; i++)
+		{
+			while(FLASH_ProgramWord(startAddr, dataArr[i]) != FLASH_COMPLETE);	
+			startAddr += 4U;
+		}
+		FLASH_Lock();
+}
+
 void Led_Config(void)
 {
 	//Enable clock GPIOC
@@ -57,12 +83,7 @@ void Led_Config(void)
 	//PC13, mode:output, pushpull, max spedd 10Mhz
 	GPIOC->CRH &= ~(0xf << 20);
 	GPIOC->CRH |= (1 << 20);	
-	
-	GPIO_InitTypeDef    GPIO_InitStructure;
-	RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOA, ENABLE ); 
-	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_1 | GPIO_Pin_2;
-	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
-	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;	
-	GPIO_Init(GPIOA, &GPIO_InitStructure );	
 }
-
+/******************************************************************************/
+/*                            			END CODE                                  */
+/******************************************************************************/
