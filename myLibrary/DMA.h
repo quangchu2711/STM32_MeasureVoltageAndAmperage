@@ -9,7 +9,7 @@
    * @attention: DAM(ADC1) use 8 channel: PA0->PA7 (SMT32F103C8T6)
 	 *	How to use:
 	 *		Step 1: ADC_Multi_Channel_Config(uint8_t ADC_channel_number, uint8_t ADC_sampleTime);
-	 *		Step 2: DMA_Multi_Channel_Config(uint16_t *ADC_values, uint8_t array_size);
+	 *		Step 2: DMA_Multi_Channel_Config(uint16_t *ADC_values, uint8_t array_len);
 	 *		Step 3: DMA_Start(void);
    ******************************************************************************
    */
@@ -20,7 +20,7 @@
 #include "stm32f10x.h"
 
 void ADC_Multi_Channel_Config(uint8_t ADC_channel_number, uint8_t ADC_sampleTime);
-void DMA_Multi_Channel_Config(uint16_t *ADC_values, uint8_t array_size);
+void DMA_Multi_Channel_Config(uint16_t *ADC_values, uint8_t array_len);
 void DMA_Start(void);
 
 #endif

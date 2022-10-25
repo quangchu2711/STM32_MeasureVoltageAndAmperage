@@ -422,6 +422,21 @@
               <FileType>1</FileType>
               <FilePath>..\..\lib\STM32F10x_StdPeriph_Driver\src\stm32f10x_flash.c</FilePath>
             </File>
+            <File>
+              <FileName>stm32f10x_dma.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\..\lib\STM32F10x_StdPeriph_Driver\src\stm32f10x_dma.c</FilePath>
+            </File>
+            <File>
+              <FileName>stm32f10x_exti.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\..\lib\STM32F10x_StdPeriph_Driver\src\stm32f10x_exti.c</FilePath>
+            </File>
+            <File>
+              <FileName>stm32f10x_tim.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\..\lib\STM32F10x_StdPeriph_Driver\src\stm32f10x_tim.c</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>
@@ -466,6 +481,11 @@
               <FileName>Serial.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\..\myLibrary\Serial.c</FilePath>
+            </File>
+            <File>
+              <FileName>DMA.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\..\myLibrary\DMA.c</FilePath>
             </File>
           </Files>
         </Group>

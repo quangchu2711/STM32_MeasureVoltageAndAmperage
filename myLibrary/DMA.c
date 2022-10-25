@@ -70,7 +70,7 @@ void ADC_Multi_Channel_Config(uint8_t ADC_channel_number, uint8_t ADC_sampleTime
 	while(ADC_GetCalibrationStatus(ADC1));
 }
 
-void DMA_Multi_Channel_Config(uint16_t *ADC_values, uint8_t array_size)
+void DMA_Multi_Channel_Config(uint16_t *ADC_values, uint8_t array_len)
 {
 	//enable DMA1 clock
 	RCC_AHBPeriphClockCmd(RCC_AHBPeriph_DMA1, ENABLE);
@@ -94,7 +94,7 @@ void DMA_Multi_Channel_Config(uint16_t *ADC_values, uint8_t array_size)
 	//Location assigned to peripheral register will be source
 	DMA_InitStructure.DMA_DIR = DMA_DIR_PeripheralSRC;
 	//chunk of data to be transfered
-	DMA_InitStructure.DMA_BufferSize = array_size;
+	DMA_InitStructure.DMA_BufferSize = array_len;
 	//source and destination start addresses
 	DMA_InitStructure.DMA_PeripheralBaseAddr = (uint32_t)ADC1_DR;
 	DMA_InitStructure.DMA_MemoryBaseAddr = (uint32_t)ADC_values;

@@ -32,3 +32,7 @@
 .\objects\main.o: ..\..\myLibrary\Serial.h
 .\objects\main.o: C:\Keil_v5\ARM\ARMCC\Bin\..\include\stdarg.h
 .\objects\main.o: ..\..\myLibrary\RingBuffer.h
+.\objects\main.o: ..\..\myLibrary\DMA.h
+.\objects\main.o: ..\..\myLibrary\Button.h
+.\objects\main.o: C:\Keil_v5\ARM\ARMCC\Bin\..\include\stdio.h
+.\objects\main.o: C:\Keil_v5\ARM\ARMCC\Bin\..\include\stdbool.h
