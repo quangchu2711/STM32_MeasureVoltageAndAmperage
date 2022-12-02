@@ -6,15 +6,16 @@
 #include "Serial.h"
 #include "DMA.h"
 #include "Button.h"
+#include "LCD_I2C.h"
 /******************************************************************************/
 /*                     EXPORTED TYPES and DEFINITIONS                         */
 /******************************************************************************/
 #define PAGE_ADDR_127 (0x0801FC00U)
-#define PORT_BUTTON	GPIOA
-#define PIN_BUTTON_1 GPIO_Pin_3
-#define PIN_BUTTON_2 GPIO_Pin_4
-#define PIN_BUTTON_3 GPIO_Pin_5
-#define PIN_BUTTON_4 GPIO_Pin_6
+#define PORT_BUTTON	GPIOB
+#define PIN_BUTTON_1 GPIO_Pin_5
+#define PIN_BUTTON_2 GPIO_Pin_6
+#define PIN_BUTTON_3 GPIO_Pin_7
+#define PIN_BUTTON_4 GPIO_Pin_8
 
 typedef enum 
 {
@@ -62,8 +63,8 @@ int main(void)
 	SysTick_Init();
 	Serial_Begin(9600);
 	/* System Clocks Configuration */
-	Led_Config();
-	GPIO_WriteBit(GPIOC, GPIO_Pin_13, (BitAction)1);
+//	Led_Config();
+//	GPIO_WriteBit(GPIOC, GPIO_Pin_13, (BitAction)1);
 	ADC_Multi_Channel_Config(3, ADC_SampleTime_239Cycles5);
 	DMA_Multi_Channel_Config(g_AdcValueArr, 3); /*PA0, PA1, PA2*/
 	DMA_Start();
@@ -71,9 +72,11 @@ int main(void)
 	Button_Config(PORT_BUTTON, PIN_BUTTON_2, &button2);
 	Button_Config(PORT_BUTTON, PIN_BUTTON_3, &button3);
 	Button_Config(PORT_BUTTON, PIN_BUTTON_4, &button4);
-	TIM3_InputCaptureConfig();
-	Serial_Printf("Connected");
-	
+//	TIM3_InputCaptureConfig();
+//	Serial_Printf("Connected");
+	LCD_I2C_Configuration();
+	LCD_Init();
+
   while (1)
   {
 //		//Test ferquency
@@ -84,12 +87,18 @@ int main(void)
 //		}
 //		GPIO_WriteBit(GPIOB, GPIO_Pin_5, (BitAction)(stateLed));
 		
-//		//Test button (Done)
-//		Button_Mode_t buttonMode = getButtonMode();
-//		if (buttonMode != INIT_MODE)
-//		{
+		//Test button (Done)
+		Button_Mode_t buttonMode = getButtonMode();
+		if (buttonMode != INIT_MODE)
+		{
 //			Serial_Printf("[Button: %d]\n", buttonMode);	
-//		}
+			LCD_Gotoxy(0, 0);
+			LCD_Printf("%d", buttonMode);
+
+		}
+//		LCD_Gotoxy(0, 0);
+//		LCD_Printf("%d", buttonMode);
+
 		
 		//Test DMA (Done) 
 //		Serial_Printf("[%d - %d - %d]\n", g_AdcValueArr[0], g_AdcValueArr[1], g_AdcValueArr[2]);
@@ -114,19 +123,19 @@ Button_Mode_t getButtonMode(void)
 {
 	Button_Mode_t buttonMode = INIT_MODE;
 	
-	if (Button_OnPress(GPIOA, PIN_BUTTON_1, &button1))
+	if (Button_OnPress(PORT_BUTTON, PIN_BUTTON_1, &button1))
 	{
 			buttonMode = BUTTON1_MODE;
 	}
-	else if (Button_OnPress(GPIOA, PIN_BUTTON_2, &button2))
+	else if (Button_OnPress(PORT_BUTTON, PIN_BUTTON_2, &button2))
 	{
 			buttonMode = BUTTON2_MODE;
 	}
-	else if (Button_OnPress(GPIOA, PIN_BUTTON_3, &button3))
+	else if (Button_OnPress(PORT_BUTTON, PIN_BUTTON_3, &button3))
 	{
 			buttonMode = BUTTON3_MODE;
 	}
-	else if (Button_OnPress(GPIOA, PIN_BUTTON_4, &button4)) 
+	else if (Button_OnPress(PORT_BUTTON, PIN_BUTTON_4, &button4)) 
 	{
 			buttonMode = BUTTON4_MODE;
 	}
@@ -162,34 +171,6 @@ void Flash_WriteDataArray(uint32_t dataArr[], uint8_t lenArr, uint32_t startAddr
 			startAddr += 4U;
 		}
 		FLASH_Lock();
-}
-
-void Led_Config(void)
-{
-//	//Enable clock GPIOC
-//	RCC->APB2ENR |= (1 << 4);
-//	
-//	//PC13, mode:output, pushpull, max spedd 10Mhz
-//	GPIOC->CRH &= ~(0xf << 20);
-//	GPIOC->CRH |= (1 << 20);	
-	GPIO_InitTypeDef GPIO_InitStructure;
-	RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOB, ENABLE);
-
-	/* TIM3 channel 2 pin (PA.07) configuration */
-	GPIO_InitStructure.GPIO_Pin =  GPIO_Pin_5;
-	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
-	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-
-  GPIO_Init(GPIOB, &GPIO_InitStructure);
-
-	//GPIO_InitTypeDef GPIO_InitStructure;
-
-//	/* TIM3 channel 2 pin (PA.07) configuration */
-//	GPIO_InitStructure.GPIO_Pin =  GPIO_Pin_11 | GPIO_Pin_12;
-//	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
-//	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-
-//  GPIO_Init(GPIOA, &GPIO_InitStructure);	
 }
 
 void TIM3_ClockConfig(void)

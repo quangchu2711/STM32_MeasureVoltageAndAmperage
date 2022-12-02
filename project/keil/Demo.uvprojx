@@ -437,6 +437,11 @@
               <FileType>1</FileType>
               <FilePath>..\..\lib\STM32F10x_StdPeriph_Driver\src\stm32f10x_tim.c</FilePath>
             </File>
+            <File>
+              <FileName>stm32f10x_i2c.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\..\lib\STM32F10x_StdPeriph_Driver\src\stm32f10x_i2c.c</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>
@@ -486,6 +491,11 @@
               <FileName>DMA.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\..\myLibrary\DMA.c</FilePath>
+            </File>
+            <File>
+              <FileName>LCD_I2C.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\..\myLibrary\LCD_I2C.c</FilePath>
             </File>
           </Files>
         </Group>
