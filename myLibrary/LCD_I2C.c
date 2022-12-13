@@ -128,7 +128,7 @@ void LCD_Gotoxy(uint8_t x, uint8_t y)
 
 void LCD_Printf(const char* str, ...)
 {
-  char stringArray[20];
+  char stringArray[17];
 	
   va_list args;
   va_start(args, str);

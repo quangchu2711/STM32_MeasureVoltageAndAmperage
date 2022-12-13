@@ -18,15 +18,27 @@
 #define BUTTON_PIN_4 						GPIO_Pin_8
 #define RELAY_CLOCK 						RCC_APB2Periph_GPIOA
 #define RELAY_PORT							GPIOA
-#define RELAY_POWER_PIN					GPIO_Pin_11
-#define RELAY_SOFT_START_PIN		GPIO_Pin_12
-#define RELAY_PIN_1 						GPIO_Pin_3
-#define RELAY_PIN_2 						GPIO_Pin_4
-#define RELAY_PIN_3 						GPIO_Pin_5
-#define RELAY_PIN_4 						GPIO_Pin_6
+#define RELAY1_POWER_PIN				GPIO_Pin_11
+#define RELAY2_SOFT_START_PIN		GPIO_Pin_12
+#define RELAY3_PIN 						  GPIO_Pin_3
+#define RELAY4_PIN 						  GPIO_Pin_5
+#define RELAY5_PIN 						  GPIO_Pin_6
+#define RELAY6_PIN 						  GPIO_Pin_4
 #define BUZZER_CLOCK 						RCC_APB2Periph_GPIOA
 #define BUZZER_PORT							GPIOA
 #define BUZZER_PIN							GPIO_Pin_8
+
+//#define RELAY1_ON_TIME 					
+#define RELAY2_OFF_TIME         2000
+#define RELAY3_ON_TIME					1000
+#define RELAY4_ON_TIME					5000
+#define RELAY5_ON_TIME					2000
+#define RELAY6_ON_TIME					1000
+
+#define RELAY_ON 								((BitAction)0)
+#define RELAY_OFF 							((BitAction)1)
+#define MIN_CLOSE_TIME					1
+#define MAX_CLOSE_TIME					9
 
 typedef enum 
 {
@@ -34,8 +46,20 @@ typedef enum
 	BUTTON1_MODE,
 	BUTTON2_MODE,
 	BUTTON3_MODE,
-	BUTTON4_MODE	
+	BUTTON4_MODE,
+	BUTTON3_SETUP_TIME,	
 }Button_Mode_t;
+
+typedef enum
+{
+//	POWER_BUTTON_PRESS_MODE,
+//	SETUP_BUTTON_TIME,
+//	SYSTEM_PROBLEMS,
+//	CURRENT_PROTECTION_MODE,
+	DISPLAY,
+	SETUP_TIME,
+	CLOSE_CONTROL,
+}System_Mode_t;
 
 TIM_ICInitTypeDef  TIM_ICInitStructure;
 TIM_TimeBaseInitTypeDef TIM_TimeBaseInitStruct;
@@ -46,21 +70,27 @@ __IO uint16_t g_IC3ReadValue1 = 0, g_IC3ReadValue2 = 0;
 __IO uint16_t g_CaptureTimerNumber = 0;
 __IO uint32_t g_TimeCapture = 0;
 __IO float g_Freq = 0;
-uint32_t g_SetTimeModeArr[4] = {3, 4, 5, 6};
+uint32_t g_SetTimeModeArr[6];
 uint16_t g_AdcValueArr[3];
 uint32_t g_TimeMs = 0;
+uint32_t g_ControlTime = 0;
+uint8_t g_flagCheckSetupTime = 0;
+uint8_t g_StaButton3 = 0;
 ButtonManagement button1;
 ButtonManagement button2;
 ButtonManagement button3;
 ButtonManagement button4;
 uint32_t TimeMillis = 0;
 uint8_t stateLed = 0;
+uint8_t g_idxSelectRelay = 1;
+System_Mode_t sysMode = DISPLAY;
 /******************************************************************************/
 /*                            EXPORTED FUNCTIONS                              */
 /******************************************************************************/
 Button_Mode_t getButtonMode(void);
 uint32_t Flash_ReadData(uint32_t addr);
 uint16_t Get_Voltage(void);
+float Get_Amperage(uint16_t adcValue);
 
 void Flash_WriteData(uint32_t data, uint32_t addr);
 void Flash_WriteDataArray(uint32_t dataArr[], uint8_t lenArr, uint32_t startAddr);
@@ -73,21 +103,29 @@ void Buzzer_config(void);
 void Buzzer_Start(void);
 void Buzzer_Stop(void);
 void TurnOff_AllDevices(void);
+void PowerButtonPressMode(void);
+void System_Problems_Mode(void);
+void Current_Protection_Mode(void);
+void Handle_SystemMode(void);
+void Handle_SetTimeOfRelay(void);
+void Control_OffRelay(uint8_t relayIdx);
+void Flash_SendDataToArray(void);
 
 void TurnOff_AllDevices(void)
 {
-	GPIO_WriteBit(RELAY_PORT, RELAY_POWER_PIN, (BitAction)(1));
-	GPIO_WriteBit(RELAY_PORT, RELAY_SOFT_START_PIN, (BitAction)(1));				
-	GPIO_WriteBit(RELAY_PORT, RELAY_PIN_1, (BitAction)(1));
-	GPIO_WriteBit(RELAY_PORT, RELAY_PIN_2, (BitAction)(1));
-	GPIO_WriteBit(RELAY_PORT, RELAY_PIN_3, (BitAction)(1));
-	GPIO_WriteBit(RELAY_PORT, RELAY_PIN_4, (BitAction)(1));					
+	GPIO_WriteBit(RELAY_PORT, RELAY1_POWER_PIN, (BitAction)(1));
+	GPIO_WriteBit(RELAY_PORT, RELAY2_SOFT_START_PIN, (BitAction)(1));				
+	GPIO_WriteBit(RELAY_PORT, RELAY5_PIN, (BitAction)(1));
+	GPIO_WriteBit(RELAY_PORT, RELAY6_PIN, (BitAction)(1));
+	GPIO_WriteBit(RELAY_PORT, RELAY4_PIN, (BitAction)(1));
+	GPIO_WriteBit(RELAY_PORT, RELAY3_PIN, (BitAction)(1));					
 }
 
 uint16_t Get_Voltage(void)
 {
-	uint16_t a;
+	uint16_t a = 0;
 	uint16_t data, ADCm, A, B, C, V, max;
+	max = 0;
 	for (a = 0; a < 500; a++)
 	{
 		data = g_AdcValueArr[0]; //Doc ADC tai chan PA0
@@ -127,14 +165,28 @@ int main(void)
 	Relay_Config();
 	Buzzer_config();
 	TurnOff_AllDevices();
+	g_flagCheckSetupTime = 0;
+	LCD_Clear();
+	Flash_SendDataToArray();
+	
   while (1)
   {
-		LCD_Gotoxy(1, 0);
-		LCD_Printf("%d- %d -%d", g_AdcValueArr[0], g_AdcValueArr[2]);
-		LCD_Gotoxy(0, 0);
-		LCD_Printf("%d", Get_Voltage());
-		delay_ms(100);
-//		//Test ferquency
+		Handle_SystemMode();
+		//Handle_SetTimeOfRelay();
+//		Button_Mode_t buttonMode = getButtonMode();
+//		if (buttonMode != INIT_MODE)
+//		{
+//			LCD_Gotoxy(0, 0);
+//			LCD_Printf("%d", buttonMode);
+//		}
+//		LCD_Gotoxy(0, 0);
+//		LCD_Printf("%d %.2f %.2f", Get_Voltage(), Get_Amperage(g_AdcValueArr[1]), Get_Amperage(g_AdcValueArr[2]));
+//		LCD_Gotoxy(1, 0);
+//		LCD_Printf("%d- %d -%d", g_AdcValueArr[0], g_AdcValueArr[1], g_AdcValueArr[2]);
+//		delay_ms(100);
+
+//			PowerButtonPressMode();
+		//		//Test ferquency
 //		if (SysTick_Millis() - g_TimeMs > 10)
 //		{
 //			stateLed = !stateLed;
@@ -146,58 +198,58 @@ int main(void)
 //		LCD_Gotoxy(1, 0);
 //		LCD_Printf("%d Hz", g_Freq);
 		//Test button (Done)
-		if (Serial_Available())
-		{
-			uint8_t mode = Serial_Read();
-			if (mode == 'O')
-			{
-				Buzzer_Start();
-				GPIO_WriteBit(RELAY_PORT, RELAY_POWER_PIN, (BitAction)(1));
-				GPIO_WriteBit(RELAY_PORT, RELAY_SOFT_START_PIN, (BitAction)(1));				
-				GPIO_WriteBit(RELAY_PORT, RELAY_PIN_1, (BitAction)(1));
-				GPIO_WriteBit(RELAY_PORT, RELAY_PIN_2, (BitAction)(1));
-				GPIO_WriteBit(RELAY_PORT, RELAY_PIN_3, (BitAction)(1));
-				GPIO_WriteBit(RELAY_PORT, RELAY_PIN_4, (BitAction)(1));				
-			}
-			else	if (mode == 'F')
-			{
-				GPIO_WriteBit(RELAY_PORT, RELAY_POWER_PIN, (BitAction)(0));
-				GPIO_WriteBit(RELAY_PORT, RELAY_SOFT_START_PIN, (BitAction)(0));				
-				GPIO_WriteBit(RELAY_PORT, RELAY_PIN_1, (BitAction)(0));
-				GPIO_WriteBit(RELAY_PORT, RELAY_PIN_2, (BitAction)(0));
-				GPIO_WriteBit(RELAY_PORT, RELAY_PIN_3, (BitAction)(0));
-				GPIO_WriteBit(RELAY_PORT, RELAY_PIN_4, (BitAction)(0));				
-			}
-		}
-		Button_Mode_t buttonMode = getButtonMode();
-		if (buttonMode != INIT_MODE)
-		{
-//			Serial_Printf("[Button: %d]\n", buttonMode);	
-			LCD_Gotoxy(0, 0);
-			LCD_Printf("%d", buttonMode);
-			switch (buttonMode)
-      {
-      	case BUTTON2_MODE:
-					Buzzer_Start();
-					GPIO_WriteBit(RELAY_PORT, RELAY_POWER_PIN, (BitAction)(1));
-					GPIO_WriteBit(RELAY_PORT, RELAY_SOFT_START_PIN, (BitAction)(1));				
-					GPIO_WriteBit(RELAY_PORT, RELAY_PIN_1, (BitAction)(1));
-					GPIO_WriteBit(RELAY_PORT, RELAY_PIN_2, (BitAction)(1));
-					GPIO_WriteBit(RELAY_PORT, RELAY_PIN_3, (BitAction)(1));
-					GPIO_WriteBit(RELAY_PORT, RELAY_PIN_4, (BitAction)(1));				
-				break;
-      	case BUTTON3_MODE:
-					Buzzer_Stop();
-					GPIO_WriteBit(RELAY_PORT, RELAY_POWER_PIN, (BitAction)(0));
-					GPIO_WriteBit(RELAY_PORT, RELAY_SOFT_START_PIN, (BitAction)(0));				
-					GPIO_WriteBit(RELAY_PORT, RELAY_PIN_1, (BitAction)(0));
-					GPIO_WriteBit(RELAY_PORT, RELAY_PIN_2, (BitAction)(0));
-					GPIO_WriteBit(RELAY_PORT, RELAY_PIN_3, (BitAction)(0));
-					GPIO_WriteBit(RELAY_PORT, RELAY_PIN_4, (BitAction)(0));
-      		break;
-      }
+//		if (Serial_Available())
+//		{
+//			uint8_t mode = Serial_Read();
+//			if (mode == 'O')
+//			{
+//				Buzzer_Start();
+//				GPIO_WriteBit(RELAY_PORT, RELAY1_POWER_PIN, (BitAction)(1));
+//				GPIO_WriteBit(RELAY_PORT, RELAY2_SOFT_START_PIN, (BitAction)(1));				
+//				GPIO_WriteBit(RELAY_PORT, RELAY5_PIN, (BitAction)(1));
+//				GPIO_WriteBit(RELAY_PORT, RELAY6_PIN, (BitAction)(1));
+//				GPIO_WriteBit(RELAY_PORT, RELAY4_PIN, (BitAction)(1));
+//				GPIO_WriteBit(RELAY_PORT, RELAY3_PIN, (BitAction)(1));				
+//			}
+//			else	if (mode == 'F')
+//			{
+//				GPIO_WriteBit(RELAY_PORT, RELAY1_POWER_PIN, (BitAction)(0));
+//				GPIO_WriteBit(RELAY_PORT, RELAY2_SOFT_START_PIN, (BitAction)(0));				
+//				GPIO_WriteBit(RELAY_PORT, RELAY5_PIN, (BitAction)(0));
+//				GPIO_WriteBit(RELAY_PORT, RELAY6_PIN, (BitAction)(0));
+//				GPIO_WriteBit(RELAY_PORT, RELAY4_PIN, (BitAction)(0));
+//				GPIO_WriteBit(RELAY_PORT, RELAY3_PIN, (BitAction)(0));				
+//			}
+//		}
+//		Button_Mode_t buttonMode = getButtonMode();
+//		if (buttonMode != INIT_MODE)
+//		{
+////			Serial_Printf("[Button: %d]\n", buttonMode);	
+//			LCD_Gotoxy(0, 0);
+//			LCD_Printf("%d", buttonMode);
+//			switch (buttonMode)
+//      {
+//      	case BUTTON2_MODE:
+//					Buzzer_Start();
+//					GPIO_WriteBit(RELAY_PORT, RELAY1_POWER_PIN, (BitAction)(1));
+//					GPIO_WriteBit(RELAY_PORT, RELAY2_SOFT_START_PIN, (BitAction)(1));				
+//					GPIO_WriteBit(RELAY_PORT, RELAY5_PIN, (BitAction)(1));
+//					GPIO_WriteBit(RELAY_PORT, RELAY6_PIN, (BitAction)(1));
+//					GPIO_WriteBit(RELAY_PORT, RELAY4_PIN, (BitAction)(1));
+//					GPIO_WriteBit(RELAY_PORT, RELAY3_PIN, (BitAction)(1));				
+//				break;
+//      	case BUTTON3_MODE:
+//					Buzzer_Stop();
+//					GPIO_WriteBit(RELAY_PORT, RELAY1_POWER_PIN, (BitAction)(0));
+//					GPIO_WriteBit(RELAY_PORT, RELAY2_SOFT_START_PIN, (BitAction)(0));				
+//					GPIO_WriteBit(RELAY_PORT, RELAY5_PIN, (BitAction)(0));
+//					GPIO_WriteBit(RELAY_PORT, RELAY6_PIN, (BitAction)(0));
+//					GPIO_WriteBit(RELAY_PORT, RELAY4_PIN, (BitAction)(0));
+//					GPIO_WriteBit(RELAY_PORT, RELAY3_PIN, (BitAction)(0));
+//      		break;
+//      }
 
-		}
+//		}
 //		LCD_Gotoxy(0, 0);
 //		LCD_Printf("%d", buttonMode);
 
@@ -221,6 +273,158 @@ int main(void)
   }
 }
 
+void Flash_SendDataToArray(void)
+{
+		uint8_t i;
+		uint32_t data;
+		uint32_t addrStart = PAGE_ADDR_127;
+		for (i = 0; i < 6; i++)
+		{
+			data = Flash_ReadData(addrStart);
+			g_SetTimeModeArr[i] = data;
+			delay_ms(100);
+			addrStart += 4;
+		}	
+}
+
+int relayIdx = 1;
+void Handle_SetTimeOfRelay()
+{
+	uint8_t checkClear = 0;
+	uint8_t buttonMode  = INIT_MODE;
+	buttonMode = getButtonMode();
+	if (buttonMode == BUTTON3_MODE)
+	{
+		relayIdx += 1;
+		if (relayIdx == 7) 
+		{
+			relayIdx = 1;
+			g_flagCheckSetupTime = 0;
+			LCD_Clear();
+			LCD_Gotoxy(0, 0);
+			LCD_Printf("Time saved...");
+			delay_ms(1000);
+			checkClear = 1;
+			Flash_WriteDataArray(g_SetTimeModeArr, 6, PAGE_ADDR_127);
+		}
+	}
+	else if (buttonMode == BUTTON2_MODE)
+	{
+		g_SetTimeModeArr[relayIdx-1] += 1;
+		if (g_SetTimeModeArr[relayIdx-1] > MAX_CLOSE_TIME) g_SetTimeModeArr[relayIdx-1] = MIN_CLOSE_TIME;
+	}
+	else if (buttonMode == BUTTON4_MODE)
+	{
+		g_SetTimeModeArr[relayIdx-1] -= 1;
+		if (g_SetTimeModeArr[relayIdx-1] < MIN_CLOSE_TIME) g_SetTimeModeArr[relayIdx-1] = MAX_CLOSE_TIME;		
+	}	
+	LCD_Gotoxy(0, 0);
+	LCD_Printf("Relay: %d       ", relayIdx);
+	LCD_Gotoxy(1, 0);
+	LCD_Printf("close_time: %d  ", g_SetTimeModeArr[relayIdx-1]);
+	if (checkClear)
+	{
+		LCD_Clear();
+	}
+}
+
+void Control_OffRelay(uint8_t relayIdx)
+{
+	LCD_Gotoxy(0, 0);
+	LCD_Send_String("...........");				
+	LCD_Gotoxy(1, 0);
+	LCD_Printf("Wait: %d s", g_SetTimeModeArr[relayIdx-1]);	
+	uint32_t timeMs = g_SetTimeModeArr[relayIdx-1] * 1000;
+	switch (relayIdx)
+  {
+  	case 1:
+			delay_ms(timeMs);
+			GPIO_WriteBit(RELAY_PORT, RELAY1_POWER_PIN, RELAY_OFF);
+			break;
+  	case 2:
+			delay_ms(timeMs);
+			GPIO_WriteBit(RELAY_PORT, RELAY2_OFF_TIME, RELAY_OFF);
+			break;
+  	case 3:
+			delay_ms(timeMs);
+			GPIO_WriteBit(RELAY_PORT, RELAY3_PIN, RELAY_OFF);
+			break;
+  	case 4:
+			delay_ms(timeMs);
+			GPIO_WriteBit(RELAY_PORT, RELAY4_PIN, RELAY_OFF);
+			break;
+  	case 5:
+			delay_ms(timeMs);
+			GPIO_WriteBit(RELAY_PORT, RELAY5_PIN, RELAY_OFF);
+			break;
+  	case 6:
+			delay_ms(timeMs);
+			GPIO_WriteBit(RELAY_PORT, RELAY6_PIN, RELAY_OFF);
+			break;
+  }
+}
+
+void Handle_SystemMode()
+{
+	/***/ 
+	if (g_flagCheckSetupTime == 0)
+	{
+		Button_Mode_t buttonMode = getButtonMode();
+		if (buttonMode == BUTTON3_MODE)
+		{
+			g_StaButton3 = !g_StaButton3;
+			if (g_StaButton3 == 0)
+			{
+				sysMode = DISPLAY;
+				LCD_Clear();
+			}
+			else if (g_StaButton3 == 1)
+			{
+				sysMode =  CLOSE_CONTROL;
+				LCD_Clear();
+			}
+		}
+		else if (buttonMode == BUTTON3_SETUP_TIME)
+		{
+			g_flagCheckSetupTime = 1;
+		}
+		
+		switch (sysMode)
+		{
+			case DISPLAY:
+					LCD_Gotoxy(0, 0);
+					LCD_Printf("P = %d W", 120);
+				  break;
+			case CLOSE_CONTROL:
+					if (buttonMode == BUTTON2_MODE)
+					{
+						g_idxSelectRelay += 1;
+						if(g_idxSelectRelay == 7) g_idxSelectRelay = 1;
+					}
+					else if (buttonMode == BUTTON4_MODE)
+					{
+						g_idxSelectRelay -= 1;
+						if (g_idxSelectRelay == 0) g_idxSelectRelay = 6;
+					}
+					else if (buttonMode == BUTTON1_MODE)
+					{
+						LCD_Clear();
+						Control_OffRelay(g_idxSelectRelay);
+						LCD_Clear();
+					}
+					LCD_Gotoxy(1, 0);
+					LCD_Printf("Select relay: %d", g_idxSelectRelay);				
+					LCD_Gotoxy(0, 0);
+					LCD_Send_String("Close control");			
+					break;
+		}
+	}
+	else
+	{
+		Handle_SetTimeOfRelay();
+	}
+}
+
 Button_Mode_t getButtonMode(void)
 {
 	Button_Mode_t buttonMode = INIT_MODE;
@@ -242,8 +446,70 @@ Button_Mode_t getButtonMode(void)
 			buttonMode = BUTTON4_MODE;
 	}
 	
+	if (Button_OnHold(BUTTON_PORT, BUTTON_PIN_3, &button3))
+	{
+			buttonMode = BUTTON3_SETUP_TIME;
+	}
+	
 	return buttonMode;
 }
+
+
+void System_Problems_Mode()
+{
+	GPIO_WriteBit(RELAY_PORT, RELAY1_POWER_PIN, RELAY_OFF);
+	delay_ms(100);
+	GPIO_WriteBit(RELAY_PORT, RELAY2_SOFT_START_PIN, RELAY_OFF);	
+	GPIO_WriteBit(RELAY_PORT, RELAY3_PIN, RELAY_OFF);
+	GPIO_WriteBit(RELAY_PORT, RELAY4_PIN, RELAY_OFF);
+	GPIO_WriteBit(RELAY_PORT, RELAY5_PIN, RELAY_OFF);
+	GPIO_WriteBit(RELAY_PORT, RELAY6_PIN, RELAY_OFF);	
+}
+
+void Current_Protection_Mode()
+{
+	
+}
+
+void PowerButtonPressMode()
+{
+	GPIO_WriteBit(RELAY_PORT, RELAY1_POWER_PIN, RELAY_ON);
+	delay_ms(1000);
+	GPIO_WriteBit(RELAY_PORT, RELAY6_PIN, RELAY_ON);
+	delay_ms(1000);	
+	GPIO_WriteBit(RELAY_PORT, RELAY5_PIN, RELAY_ON);
+	delay_ms(5000);
+	GPIO_WriteBit(RELAY_PORT, RELAY4_PIN, RELAY_ON);
+	delay_ms(1000);
+	GPIO_WriteBit(RELAY_PORT, RELAY3_PIN, RELAY_ON);	
+	delay_ms(1000);
+	GPIO_WriteBit(RELAY_PORT, RELAY2_SOFT_START_PIN, RELAY_OFF);	
+}
+
+float Get_Amperage(uint16_t adcValue)
+{
+	uint16_t a, I2, ADCm, max;
+	float B; 
+	float V;
+	
+	for ( a=0;a<500;a++)
+	{			
+		I2= adcValue;
+		if(	I2>max)
+		{
+			ADCm=I2;
+			max=I2;
+		}
+	delay_ms(2);
+	}
+	// A=(1.4142*75);
+	B=(((ADCm*3.3/4096)-1.65)*(550*1.4141))/(75);
+	//printf("I1: %d\n",I1);
+	V=B*10;
+	return V;
+	//printf("I2: %d\n",V);
+}
+
 uint32_t Flash_ReadData(uint32_t addr)
 {
 	uint32_t data;
@@ -404,7 +670,7 @@ void Relay_Config(void)
 {
 	RCC_APB2PeriphClockCmd(RELAY_CLOCK, ENABLE);
 	GPIO_InitTypeDef GPIO_InitStructure;
-	GPIO_InitStructure.GPIO_Pin =  RELAY_POWER_PIN | RELAY_SOFT_START_PIN |  RELAY_PIN_1 | RELAY_PIN_2 | RELAY_PIN_3 | RELAY_PIN_4;
+	GPIO_InitStructure.GPIO_Pin =  RELAY1_POWER_PIN | RELAY2_SOFT_START_PIN |  RELAY5_PIN | RELAY6_PIN | RELAY4_PIN | RELAY3_PIN;
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
 	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
   GPIO_Init(RELAY_PORT, &GPIO_InitStructure);	
