@@ -59,6 +59,7 @@ typedef enum
 	DISPLAY,
 	SETUP_TIME,
 	CLOSE_CONTROL,
+	RELAY_ON_MODE,
 }System_Mode_t;
 
 TIM_ICInitTypeDef  TIM_ICInitStructure;
@@ -70,7 +71,7 @@ __IO uint16_t g_IC3ReadValue1 = 0, g_IC3ReadValue2 = 0;
 __IO uint16_t g_CaptureTimerNumber = 0;
 __IO uint32_t g_TimeCapture = 0;
 __IO float g_Freq = 0;
-uint32_t g_SetTimeModeArr[6];
+uint32_t g_SetTimeModeArr[4];
 uint16_t g_AdcValueArr[3];
 uint32_t g_TimeMs = 0;
 uint32_t g_ControlTime = 0;
@@ -90,7 +91,7 @@ System_Mode_t sysMode = DISPLAY;
 Button_Mode_t getButtonMode(void);
 uint32_t Flash_ReadData(uint32_t addr);
 uint16_t Get_Voltage(void);
-float Get_Amperage(uint16_t adcValue);
+uint16_t Get_Amperage(int16_t adcValue);
 
 void Flash_WriteData(uint32_t data, uint32_t addr);
 void Flash_WriteDataArray(uint32_t dataArr[], uint8_t lenArr, uint32_t startAddr);
@@ -110,38 +111,35 @@ void Handle_SystemMode(void);
 void Handle_SetTimeOfRelay(void);
 void Control_OffRelay(uint8_t relayIdx);
 void Flash_SendDataToArray(void);
+void TurnOn_AllDevices(void);
 
 void TurnOff_AllDevices(void)
 {
-	GPIO_WriteBit(RELAY_PORT, RELAY1_POWER_PIN, (BitAction)(1));
-	GPIO_WriteBit(RELAY_PORT, RELAY2_SOFT_START_PIN, (BitAction)(1));				
-	GPIO_WriteBit(RELAY_PORT, RELAY5_PIN, (BitAction)(1));
-	GPIO_WriteBit(RELAY_PORT, RELAY6_PIN, (BitAction)(1));
-	GPIO_WriteBit(RELAY_PORT, RELAY4_PIN, (BitAction)(1));
-	GPIO_WriteBit(RELAY_PORT, RELAY3_PIN, (BitAction)(1));					
+	GPIO_WriteBit(RELAY_PORT, RELAY1_POWER_PIN, RELAY_OFF);
+	GPIO_WriteBit(RELAY_PORT, RELAY2_SOFT_START_PIN, RELAY_OFF);
+	GPIO_WriteBit(RELAY_PORT, RELAY5_PIN, RELAY_OFF);
+	GPIO_WriteBit(RELAY_PORT, RELAY6_PIN, RELAY_OFF);
+	GPIO_WriteBit(RELAY_PORT, RELAY4_PIN, RELAY_OFF);
+	GPIO_WriteBit(RELAY_PORT, RELAY3_PIN, RELAY_OFF);
+}
+
+void TurnOn_AllDevices(void)
+{
+	GPIO_WriteBit(RELAY_PORT, RELAY1_POWER_PIN, RELAY_ON);
+	GPIO_WriteBit(RELAY_PORT, RELAY2_SOFT_START_PIN, RELAY_ON);
+	GPIO_WriteBit(RELAY_PORT, RELAY5_PIN, RELAY_ON);
+	GPIO_WriteBit(RELAY_PORT, RELAY6_PIN, RELAY_ON);
+	GPIO_WriteBit(RELAY_PORT, RELAY4_PIN, RELAY_ON);
+	GPIO_WriteBit(RELAY_PORT, RELAY3_PIN, RELAY_ON);
 }
 
 uint16_t Get_Voltage(void)
 {
-	uint16_t a = 0;
-	uint16_t data, ADCm, A, B, C, V, max;
-	max = 0;
-	for (a = 0; a < 500; a++)
-	{
-		data = g_AdcValueArr[0]; //Doc ADC tai chan PA0
-		if(data > max)
-		{
-			ADCm=data;
-			max=data;
-		}
-		delay_ms(1);
-	}
-	A=ADCm*2048/402;
-	B=((A*3.3)/4096);
-	//V=((-1.65*821000)+B*821000)/(100*(47/2.2)*1.142);
-	C= (B-1.65)/(((1.65+(((ADCm-402)*3.3/4096)))*100*(47/2.2))/821000);
-	V = C;
-	return V;
+		int16_t value;
+		value = g_AdcValueArr[0];
+    float vol;
+    vol = (((value * 3.3/ 4095.0 )- 1.65) * 2.0 * 821000.0) / (100 * 1.414 * 47.0);
+    return (uint16_t)vol;
 }
 
 int main(void)
@@ -168,10 +166,23 @@ int main(void)
 	g_flagCheckSetupTime = 0;
 	LCD_Clear();
 	Flash_SendDataToArray();
+	//TurnOn_AllDevices();
+	TurnOff_AllDevices();
 	
-  while (1)
+	//GPIO_WriteBit(RELAY_PORT, RELAY2_OFF_TIME, RELAY_OFF);
+	GPIO_WriteBit(RELAY_PORT, RELAY1_POWER_PIN, RELAY_ON);
+	GPIO_WriteBit(RELAY_PORT, RELAY2_SOFT_START_PIN, RELAY_ON);
+	GPIO_WriteBit(RELAY_PORT, RELAY6_PIN, RELAY_ON);
+
+	while (1)
   {
-		Handle_SystemMode();
+		LCD_Gotoxy(0, 0);
+		LCD_Printf("%d %d", g_AdcValueArr[1], g_AdcValueArr[2]);
+		LCD_Gotoxy(1, 0);
+		LCD_Printf("%d - %d", Get_Amperage(g_AdcValueArr[1]), Get_Amperage(g_AdcValueArr[2]));
+		delay_ms(300);
+
+		//Handle_SystemMode();
 		//Handle_SetTimeOfRelay();
 //		Button_Mode_t buttonMode = getButtonMode();
 //		if (buttonMode != INIT_MODE)
@@ -278,7 +289,7 @@ void Flash_SendDataToArray(void)
 		uint8_t i;
 		uint32_t data;
 		uint32_t addrStart = PAGE_ADDR_127;
-		for (i = 0; i < 6; i++)
+		for (i = 0; i < 4; i++)
 		{
 			data = Flash_ReadData(addrStart);
 			g_SetTimeModeArr[i] = data;
@@ -388,12 +399,28 @@ void Handle_SystemMode()
 		{
 			g_flagCheckSetupTime = 1;
 		}
+		else if (buttonMode == BUTTON1_MODE)
+		{
+			sysMode = RELAY_ON_MODE;
+		}
 		
 		switch (sysMode)
 		{
+			case RELAY_ON_MODE:
+				PowerButtonPressMode();
+				sysMode = DISPLAY;
+				break;
 			case DISPLAY:
+					//LCD_Printf("%d %.2f %.2f", Get_Voltage(), Get_Amperage(g_AdcValueArr[1]), Get_Amperage(g_AdcValueArr[2]));
 					LCD_Gotoxy(0, 0);
-					LCD_Printf("P = %d W", 120);
+					LCD_Printf("%d ", Get_Voltage());
+					LCD_Gotoxy(1, 0);
+			//uint16_t Get_Amperage(int16_t adcValue)
+
+//					LCD_Printf("%d- %d -%d", g_AdcValueArr[0], g_AdcValueArr[1], Get_Amperage(g_AdcValueArr[2]));
+			
+//					LCD_Printf("%d- %d -%d", g_AdcValueArr[0], Get_Amperage(g_AdcValueArr[1]), Get_Amperage(g_AdcValueArr[2]));
+			    delay_ms(10);
 				  break;
 			case CLOSE_CONTROL:
 					if (buttonMode == BUTTON2_MODE)
@@ -486,28 +513,11 @@ void PowerButtonPressMode()
 	GPIO_WriteBit(RELAY_PORT, RELAY2_SOFT_START_PIN, RELAY_OFF);	
 }
 
-float Get_Amperage(uint16_t adcValue)
+uint16_t Get_Amperage(int16_t adcValue)
 {
-	uint16_t a, I2, ADCm, max;
-	float B; 
-	float V;
-	
-	for ( a=0;a<500;a++)
-	{			
-		I2= adcValue;
-		if(	I2>max)
-		{
-			ADCm=I2;
-			max=I2;
-		}
-	delay_ms(2);
-	}
-	// A=(1.4142*75);
-	B=(((ADCm*3.3/4096)-1.65)*(550*1.4141))/(75);
-	//printf("I1: %d\n",I1);
-	V=B*10;
-	return V;
-	//printf("I2: %d\n",V);
+    float value;
+    value = (((adcValue * 3.3 / 4095.0) - 1.65) / (50.0 * 1.41)) * 700.0;
+    return (uint16_t)value;
 }
 
 uint32_t Flash_ReadData(uint32_t addr)
