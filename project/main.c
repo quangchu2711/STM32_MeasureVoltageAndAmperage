@@ -35,8 +35,8 @@
 #define RELAY5_ON_TIME					2000
 #define RELAY6_ON_TIME					1000
 
-#define RELAY_ON 								((BitAction)1)
-#define RELAY_OFF 							((BitAction)0)
+#define RELAY_ON 								((BitAction)0)
+#define RELAY_OFF 							((BitAction)1)
 #define MIN_CLOSE_TIME					1
 #define MAX_CLOSE_TIME					9
 
@@ -75,7 +75,7 @@ ButtonManagement button4;
 Button_Mode_t getButtonMode(void);
 uint32_t Flash_ReadData(uint32_t addr);
 uint16_t Get_Voltage(void);
-uint16_t Get_Amperage(int16_t adcValue);
+float Get_Amperage(int16_t adcValue);
 System_Mode_t Get_SystemMode(void);
 
 void Flash_WriteData(uint32_t data, uint32_t addr);
@@ -100,38 +100,59 @@ int main(void)
 	Button_Config(BUTTON_PORT, BUTTON_PIN_3, &button3);
 	Button_Config(BUTTON_PORT, BUTTON_PIN_4, &button4);
 
-//	LCD_I2C_Configuration();
-//	LCD_Init();
+	LCD_I2C_Configuration();
+	LCD_Init();
 	Relay_Config();
 
 	TurnOff_AllDevices();
 //	LCD_Clear();
 	Flash_SendDataToArray();
-	TurnOn_AllDevices();
+	//TurnOn_AllDevices();
 	TurnOff_AllDevices();
 	
-	//GPIO_WriteBit(RELAY_PORT, RELAY2_OFF_TIME, RELAY_OFF);
-//	GPIO_WriteBit(RELAY_PORT, RELAY1_POWER_PIN, RELAY_ON);
-//	GPIO_WriteBit(RELAY_PORT, RELAY2_SOFT_START_PIN, RELAY_ON);
-//	GPIO_WriteBit(RELAY_PORT, RELAY6_PIN, RELAY_ON);
+	GPIO_WriteBit(RELAY_PORT, RELAY1_POWER_PIN, RELAY_ON);
+	GPIO_WriteBit(RELAY_PORT, RELAY2_SOFT_START_PIN, RELAY_ON);
+	GPIO_WriteBit(RELAY_PORT, RELAY3_PIN, RELAY_ON);
 	Button_Mode_t buttonSta;
 	System_Mode_t sysMode = Display;
 	uint8_t staButton1 = 1;
+	uint8_t index = 0;
+	uint16_t maxVoltage = Get_Voltage();
+	float maxI1 = Get_Amperage(g_AdcValueArr[1]);
+	float maxI2 = Get_Amperage(g_AdcValueArr[2]);	
 	while (1)
   {
 		switch (sysMode)
     {
     	case Display:
 				sysMode = Get_SystemMode();
-				if (SysTick_Millis() - g_TimeMs > 500)
+				if (SysTick_Millis() - g_TimeMs > 5)
 				{
-					Serial_Printf("Vol: %d - Amp1: %.2f - Amp2: %.2f\n", Get_Voltage(), Get_Amperage(g_AdcValueArr[1]), Get_Amperage(g_AdcValueArr[2]));
+					index += 1;
+					if (Get_Voltage() > maxVoltage)
+					{
+						maxVoltage = Get_Voltage();
+					}
+					if (Get_Amperage(g_AdcValueArr[1]) >  maxI1)
+					{
+						maxI1 = Get_Amperage(g_AdcValueArr[1]);
+					}
+					if (Get_Amperage(g_AdcValueArr[2]) >  maxI2)
+					{
+						maxI2 = Get_Amperage(g_AdcValueArr[2]);
+					}
 					g_TimeMs = SysTick_Millis();
 				}
-				else
+				if (index == 100)
 				{
-					
+					Serial_Printf("Vol: %d - Amp1: %.2f - Amp2: %.2f\n", maxVoltage, maxI1, maxI2);		
+					index = 0;
 				}
+				LCD_Gotoxy(0, 0);
+				LCD_Printf("V: %d         ", maxVoltage);
+				LCD_Gotoxy(1, 0);
+				LCD_Printf("I1:%.2f-I2:%.2f  ", maxI1, maxI2);
+
     		break;
 			case ModeButton1_on:
 				TurnOn_ModeButton1();
@@ -144,30 +165,22 @@ int main(void)
     	case EditTime:
     		break;
     }
-//			buttonSta = getButtonMode();
-//			if(buttonSta != INIT_MODE)
-//			{
-//				Serial_Printf("%d\n", buttonSta);
-//			}
-			
-//			if (SysTick_Millis() - g_TimeMs > 100)
-//			{
-//				Serial_Printf("%d\n", buttonSta);
-//				g_TimeMs = SysTick_Millis();
-//			}
-//		LCD_Gotoxy(0, 0);
-//		LCD_Printf("%d %d", g_AdcValueArr[1], g_AdcValueArr[2]);
-//		LCD_Gotoxy(1, 0);
-//		LCD_Printf("%d - %d", Get_Amperage(g_AdcValueArr[1]), Get_Amperage(g_AdcValueArr[2]));
-//		delay_ms(300);
   }
 }
 
-uint16_t Get_Amperage(int16_t adcValue)
+void Lcd_Display()
+{
+	LCD_Gotoxy(0, 0);
+	LCD_Printf("%d %d", g_AdcValueArr[1], g_AdcValueArr[2]);
+	LCD_Gotoxy(1, 0);
+	LCD_Printf("%d - %d", Get_Amperage(g_AdcValueArr[1]), Get_Amperage(g_AdcValueArr[2]));
+}
+
+float Get_Amperage(int16_t adcValue)
 {
     float value;
     value = (((adcValue * 3.3 / 4095.0) - 1.65) / (50.0 * 1.41)) * 700.0;
-    return (uint16_t)value;
+    return value;
 }
 
 uint16_t Get_Voltage(void)
@@ -175,7 +188,7 @@ uint16_t Get_Voltage(void)
 		int16_t value;
 		value = g_AdcValueArr[0];
     float vol;
-    vol = (((value * 3.3/ 4095.0 )- 1.65) * 2.0 * 821000.0) / (100 * 1.414 * 47.0);
+    vol = (((value * 3.3/ 4095.0 )- 1.65) * 2.0 * 821000.0) / (100 * 1.414 * 49.2);
     return (uint16_t)vol;
 }
 
