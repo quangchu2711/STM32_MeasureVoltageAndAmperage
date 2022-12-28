@@ -1,6 +1,7 @@
 /******************************************************************************/
 /*                              INCLUDE FILES                                 */
 /******************************************************************************/
+#include <stdlib.h>
 #include "stm32f10x.h"
 #include "Delay.h"
 #include "Serial.h"
@@ -110,16 +111,17 @@ int main(void)
 	//TurnOn_AllDevices();
 	TurnOff_AllDevices();
 	
-	GPIO_WriteBit(RELAY_PORT, RELAY1_POWER_PIN, RELAY_ON);
-	GPIO_WriteBit(RELAY_PORT, RELAY2_SOFT_START_PIN, RELAY_ON);
-	GPIO_WriteBit(RELAY_PORT, RELAY3_PIN, RELAY_ON);
+//	GPIO_WriteBit(RELAY_PORT, RELAY1_POWER_PIN, RELAY_ON);
+//	GPIO_WriteBit(RELAY_PORT, RELAY2_SOFT_START_PIN, RELAY_ON);
+//	GPIO_WriteBit(RELAY_PORT, RELAY3_PIN, RELAY_ON);
 	Button_Mode_t buttonSta;
 	System_Mode_t sysMode = Display;
 	uint8_t staButton1 = 1;
 	uint8_t index = 0;
 	uint16_t maxVoltage = Get_Voltage();
 	float maxI1 = Get_Amperage(g_AdcValueArr[1]);
-	float maxI2 = Get_Amperage(g_AdcValueArr[2]);	
+	float maxI2 = Get_Amperage(g_AdcValueArr[2]);
+	float denta = 0;
 	while (1)
   {
 		switch (sysMode)
@@ -145,7 +147,16 @@ int main(void)
 				}
 				if (index == 100)
 				{
-					Serial_Printf("Vol: %d - Amp1: %.2f - Amp2: %.2f\n", maxVoltage, maxI1, maxI2);		
+					Serial_Printf("Vol: %d - Amp1: %.2f - Amp2: %.2f\n", maxVoltage, maxI1, maxI2);
+					denta = maxI1 * 1000.0 - maxI2 * 1000.0;
+					if (denta < 0)
+					{
+						denta = denta * (-1.0);
+					}
+					if (denta > 500.0)
+					{
+						Serial_Printf("ERROR\n");
+					}
 					index = 0;
 				}
 				LCD_Gotoxy(0, 0);

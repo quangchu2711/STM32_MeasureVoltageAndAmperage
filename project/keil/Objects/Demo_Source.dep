@@ -292,7 +292,8 @@ I (..\..\lib\STM32F10x_StdPeriph_Driver\inc\stm32f10x_tim.h)(0x4D7849C4)
 I (..\..\lib\STM32F10x_StdPeriph_Driver\inc\stm32f10x_usart.h)(0x4D7849C4)
 I (..\..\lib\STM32F10x_StdPeriph_Driver\inc\stm32f10x_wwdg.h)(0x4D7849C4)
 I (..\..\lib\STM32F10x_StdPeriph_Driver\inc\misc.h)(0x4D7849C4)
-F (..\main.c)(0x63AC4039)(--c99 -c --cpu Cortex-M3 -D__MICROLIB -g -O0 --apcs=interwork --split_sections -I ..\..\project -I ..\..\lib\CMSIS\CM3\CoreSupport -I ..\..\lib\STM32F10x_StdPeriph_Driver\inc -I ..\..\lib\CMSIS\CM3\DeviceSupport\ST\STM32F10x\startup\arm -I ..\..\myLibrary-I.\RTE\_Source-IC:\Users\quang\AppData\Local\Arm\Packs\Keil\STM32F1xx_DFP\2.3.0\Device\Include-IC:\Keil_v5\ARM\CMSIS\Include-D__UVISION_VERSION="527" -DSTM32F10X_MD -DUSE_STDPERIPH_DRIVER -DSTM32F10X_MD-o .\objects\main.o --omf_browse .\objects\main.crf --depend .\objects\main.d)
+F (..\main.c)(0x63AC56C7)(--c99 -c --cpu Cortex-M3 -D__MICROLIB -g -O0 --apcs=interwork --split_sections -I ..\..\project -I ..\..\lib\CMSIS\CM3\CoreSupport -I ..\..\lib\STM32F10x_StdPeriph_Driver\inc -I ..\..\lib\CMSIS\CM3\DeviceSupport\ST\STM32F10x\startup\arm -I ..\..\myLibrary-I.\RTE\_Source-IC:\Users\quang\AppData\Local\Arm\Packs\Keil\STM32F1xx_DFP\2.3.0\Device\Include-IC:\Keil_v5\ARM\CMSIS\Include-D__UVISION_VERSION="527" -DSTM32F10X_MD -DUSE_STDPERIPH_DRIVER -DSTM32F10X_MD-o .\objects\main.o --omf_browse .\objects\main.crf --depend .\objects\main.d)
+I (C:\Keil_v5\ARM\ARMCC\include\stdlib.h)(0x5EC7840C)
 I (C:\Users\quang\AppData\Local\Arm\Packs\Keil\STM32F1xx_DFP\2.3.0\Device\Include\stm32f10x.h)(0x5825467C)
 I (..\..\lib\CMSIS\CM3\CoreSupport\core_cm3.h)(0x4D524968)
 I (C:\Keil_v5\ARM\ARMCC\include\stdint.h)(0x5EC7840C)
